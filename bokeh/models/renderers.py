@@ -81,6 +81,8 @@ class DataRenderer(Renderer):
 
     '''
 
+    level = Override(default="glyph")
+
     x_range_name = String('default', help="""
     A particular (named) x-range to use for computing screen locations when
     rendering glyphs on the plot. If unset, use the default x-range.
@@ -107,8 +109,6 @@ class TileRenderer(DataRenderer):
     smoothing = Bool(default=True, help="""
     Enable image smoothing for the rendered tiles.
     """)
-
-    level = Override(default="underlay")
 
     render_parents = Bool(default=True, help="""
     Flag enable/disable drawing of parent tiles while waiting for new tiles to arrive. Default value is True.
@@ -198,8 +198,6 @@ class GlyphRenderer(DataRenderer):
     muted = Bool(False, help="""
     """)
 
-    level = Override(default="glyph")
-
 _DEFAULT_NODE_RENDERER = lambda: GlyphRenderer(
     glyph=Circle(), data_source=ColumnDataSource(data=dict(index=[]))
 )
@@ -249,8 +247,6 @@ class GraphRenderer(DataRenderer):
     An instance of a ``GraphHitTestPolicy`` that provides the logic for inspection
     of graph components.
     """)
-
-    level = Override(default="glyph")
 
 @abstract
 class GuideRenderer(Renderer):
