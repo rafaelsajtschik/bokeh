@@ -157,10 +157,10 @@ class GridBox(LayoutDOM):
     children = List(Tuple(Instance(LayoutDOM), Int, Int), default=[], help="""
     """)
 
-    rows = Either(QuickTrackSizing, Dict(IntOrString, RowSizing), help="""
+    rows = Either(QuickTrackSizing, Dict(IntOrString, RowSizing), default="auto", help="""
     """)
 
-    cols = Either(QuickTrackSizing, Dict(IntOrString, ColSizing), help="""
+    cols = Either(QuickTrackSizing, Dict(IntOrString, ColSizing), default="auto", help="""
     """)
 
     spacing = Either(Int, Tuple(Int, Int), default=0, help="""
@@ -213,7 +213,7 @@ class Row(Box):
     that is a sequence, or using the ``children`` keyword argument.
     '''
 
-    cols = Either(QuickTrackSizing, Dict(IntOrString, ColSizing), help="""
+    cols = Either(QuickTrackSizing, Dict(IntOrString, ColSizing), default="auto", help="""
     """)
 
 class Column(Box):
@@ -223,7 +223,7 @@ class Column(Box):
     that is a sequence, or using the ``children`` keyword argument.
     '''
 
-    rows = Either(QuickTrackSizing, Dict(IntOrString, RowSizing), help="""
+    rows = Either(QuickTrackSizing, Dict(IntOrString, RowSizing), default="auto", help="""
     """)
 
 
