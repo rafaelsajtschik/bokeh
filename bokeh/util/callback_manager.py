@@ -9,6 +9,11 @@ from six import string_types
 from ..events import Event
 from ..util.future import get_param_info, format_signature, signature
 
+def _nargs(fn):
+    sig = signature(fn)
+    all_names, default_values = get_param_info(sig)
+    return len(all_names) - len(default_values)
+
 def _check_callback(callback, fargs, what="Callback functions"):
     '''Bokeh-internal function to check callback signature'''
     sig = signature(callback)
@@ -17,7 +22,8 @@ def _check_callback(callback, fargs, what="Callback functions"):
 
     all_names, default_values = get_param_info(sig)
 
-    if len(all_names) - len(default_values) != len(fargs):
+    nargs = len(all_names) - len(default_values)
+    if nargs != len(fargs):
         raise ValueError(error_msg % (", ".join(fargs), formatted_args))
 
 class EventCallbackManager(object):
@@ -34,7 +40,8 @@ class EventCallbackManager(object):
             event = event.event_name
 
         for callback in callbacks:
-            _check_callback(callback, ('event',), what='Event callback')
+            if _nargs(callback) != 0:
+                _check_callback(callback, ('event',), what='Event callback')
 
         if event not in self._event_callbacks:
             self._event_callbacks[event] = [cb for cb in callbacks]
@@ -47,7 +54,10 @@ class EventCallbackManager(object):
     def _trigger_event(self, event):
         for callback in self._event_callbacks.get(event.event_name,[]):
             if event._model_id is not None and self._id == event._model_id:
-                callback(event)
+                if _nargs(callback) == 0:
+                    callback()
+                else:
+                    callback(event)
 
     def _update_event_callbacks(self):
         if self.document is None:
