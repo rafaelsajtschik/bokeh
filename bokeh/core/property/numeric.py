@@ -37,6 +37,7 @@ __all__ = (
     'Angle',
     'Byte',
     'Interval',
+    'NonNegativeInt',
     'Percent',
     'Size',
 )
@@ -44,6 +45,15 @@ __all__ = (
 #-----------------------------------------------------------------------------
 # General API
 #-----------------------------------------------------------------------------
+
+class NonNegativeInt(Int):
+    """ Accept non-negative integers. """
+
+    def validate(self, value, detail=True):
+        super(NonNegativeInt, self).validate(value, detail)
+
+        if not (value is None or value >= 0):
+            raise ValueError("expected non-negative integer, got %r" % (value))
 
 class Interval(ParameterizedProperty):
     ''' Accept numeric values that are contained within a given interval.

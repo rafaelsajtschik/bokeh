@@ -12,7 +12,7 @@ export type Margin = {
   bottom: number
 }
 
-export type SizingPolicy = "fixed" | "min" | "max" | "auto"
+export type SizingPolicy = "fixed" | "fit" | "min" | "max"
 
 export type SizeHint = Size & {
   inner?: Margin
@@ -20,17 +20,27 @@ export type SizeHint = Size & {
   height_expanding?: boolean
 }
 
-export type Sizing = number | "min" | "max"
+export type Sizing = number | "fit" | "min" | "max"
 
-export type WidthSizing =
-  {width_policy: "fixed", width: number} |
-  {width_policy: "auto", width?: number | null} |
-  {width_policy: "min" | "max"}
+export type WidthSizing = {
+  width_policy: "fixed",
+  width: number,
+} | {
+  width_policy: "fit" | "min" | "max",
+  min_width?: number,
+  width?: number,
+  max_width?: number,
+}
 
-export type HeightSizing =
-  {height_policy: "fixed", height: number} |
-  {height_policy: "auto", height?: number | null} |
-  {height_policy: "min" | "max"}
+export type HeightSizing = {
+  height_policy: "fixed",
+  height: number,
+} | {
+  height_policy: "fit" | "min" | "max",
+  min_height?: number,
+  height?: number,
+  max_height?: number,
+}
 
 export type BoxSizing = WidthSizing & HeightSizing & {aspect?: number}
 
@@ -97,13 +107,8 @@ export abstract class Layoutable {
           throw new Error("'max' sizing policy requires viewport width to be specified")
         break
       case "min":
-        width = size_hint.width
-        break
-      case "auto":
-        if (this.sizing.width != null)
-          width = this.sizing.width
-        else if (size_hint.width_expanding === true && viewport.width != null)
-          width = viewport.width
+        if (size_hint.width_expanding === true && viewport.width != null)
+          width = Math.max(viewport.width, size_hint.width)
         else
           width = size_hint.width
         break
@@ -122,13 +127,8 @@ export abstract class Layoutable {
           throw new Error("'max' sizing policy requires viewport height to be specified")
         break
       case "min":
-        height = size_hint.height
-        break
-      case "auto":
-        if (this.sizing.height != null)
-          height = this.sizing.height
-        else if (size_hint.height_expanding === true && viewport.height != null)
-          height = viewport.height
+        if (size_hint.height_expanding === true && viewport.height != null)
+          height = Math.max(viewport.height, size_hint.height)
         else
           height = size_hint.height
         break
@@ -189,6 +189,26 @@ export abstract class Layoutable {
   get yview(): CoordinateTransform {
     return this.bbox.yview
   }
+
+  protected _clip_width(width: number): number {
+    if (this.sizing.width_policy != "fixed") {
+      if (this.sizing.min_width != null)
+        width = Math.max(this.sizing.min_width, width)
+      if (this.sizing.max_width != null)
+        width = Math.min(this.sizing.max_width, width)
+    }
+    return width
+  }
+
+  protected _clip_height(height: number): number {
+    if (this.sizing.height_policy != "fixed") {
+      if (this.sizing.min_height != null)
+        height = Math.max(this.sizing.min_height, height)
+      if (this.sizing.max_height != null)
+        height = Math.min(this.sizing.max_height, height)
+    }
+    return height
+  }
 }
 
 export class LayoutItem extends Layoutable {
@@ -196,15 +216,11 @@ export class LayoutItem extends Layoutable {
     let width: number
     if (this.sizing.width_policy == "fixed")
       width = this.sizing.width
-    else if (this.sizing.width_policy == "auto" && this.sizing.width != null)
-      width = this.sizing.width
     else
       width = 0
 
     let height: number
     if (this.sizing.height_policy == "fixed")
-      height = this.sizing.height
-    else if (this.sizing.height_policy == "auto" && this.sizing.height != null)
       height = this.sizing.height
     else
       height = 0

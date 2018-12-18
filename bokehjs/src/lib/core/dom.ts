@@ -187,33 +187,25 @@ export function padding(el: HTMLElement): Sizing {
 export type Size = {width: number, height: number}
 
 export function size(el: HTMLElement): Size {
-  const style = getComputedStyle(el)
+  const rect = el.getBoundingClientRect()
+  return {width: rect.width, height: rect.height}
+}
+
+export function outer_size(el: HTMLElement): Size {
+  const {left, right, top, bottom} = margin(el)
+  const {width, height} = size(el)
   return {
-    width: num(style.width),
-    height: num(style.height),
+    width: width + left + right,
+    height: height + top + bottom,
   }
 }
 
 export function position(el: HTMLElement, bbox: BBox): void {
   const {style} = el
-  style.position = "absolute"
   style.left     = `${bbox.left}px`
   style.top      = `${bbox.top}px`
   style.width    = `${bbox.width}px`
   style.height   = `${bbox.height}px`
-}
-
-export function height(el: HTMLElement): number {
-  const margins  = margin(el)
-  const paddings = padding(el)
-  const borders  = border(el)
-
-  const style = getComputedStyle(el)
-  const line_height = parseFloat(style.lineHeight!) || 0
-
-  return margins.top  + margins.bottom  +
-         paddings.top + paddings.bottom +
-         borders.top  + borders.bottom  + line_height
 }
 
 export function children(el: HTMLElement): HTMLElement[] {
@@ -294,5 +286,17 @@ export function undisplayed<T>(el: HTMLElement, fn: () => T): T {
     return fn()
   } finally {
     el.style.display = display
+  }
+}
+
+export function unsized<T>(el: HTMLElement, fn: () => T): T {
+  const {width, height} = el.style
+  el.style.width = ""
+  el.style.height = ""
+  try {
+    return fn()
+  } finally {
+    el.style.width = width
+    el.style.height = height
   }
 }

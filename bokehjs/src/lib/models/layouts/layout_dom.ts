@@ -1,7 +1,7 @@
 import {Model} from "../../model"
 import {Class} from "core/class"
 import {SizingMode} from "core/enums"
-import {empty, classes, margin, padding, undisplayed} from "core/dom"
+import {empty, position, classes, margin, padding, undisplayed} from "core/dom"
 import {logger} from "core/logging"
 import * as p from "core/properties"
 
@@ -29,6 +29,7 @@ export abstract class LayoutDOMView extends DOMView {
 
   initialize(options: any): void {
     super.initialize(options)
+    this.el.style.position = this.is_root ? "relative" : "absolute"
     this._on_resize = () => this.compute_layout()
     this._child_views = {}
     this.build_child_views()
@@ -94,12 +95,8 @@ export abstract class LayoutDOMView extends DOMView {
   }
 
   update_position(): void {
-    this.el.style.position = this.is_root ? "relative" : "absolute"
     this.el.style.display = this.model.visible ? "block" : "none"
-    this.el.style.left = `${this.layout._left.value}px`
-    this.el.style.top = `${this.layout._top.value}px`
-    this.el.style.width = `${this.layout._width.value}px`
-    this.el.style.height = `${this.layout._height.value}px`
+    position(this.el, this.layout.bbox)
 
     for (const child_view of this.child_views)
       child_view.update_position()
@@ -167,6 +164,14 @@ export abstract class LayoutDOMView extends DOMView {
     }
   }
 
+  protected _width_sizing(): WidthSizing {
+    return {width_policy: "min"}
+  }
+
+  protected _height_sizing(): HeightSizing {
+    return {height_policy: "min"}
+  }
+
   box_sizing(): BoxSizing {
     const {sizing_mode} = this.model
 
@@ -191,12 +196,10 @@ export abstract class LayoutDOMView extends DOMView {
       if (width_policy == "fixed") {
         if (this.model.width != null)
           width_sizing = {width_policy: "fixed", width: this.model.width}
-        else {
-          logger.warn("width must be specified with fixed sizing policy, falling back to auto policy instead")
-          width_sizing = {width_policy: "auto"}
-        }
+        else
+          throw new Error("width must be specified with fixed sizing policy")
       } else if (width_policy == "auto")
-        width_sizing = {width_policy: "auto", width: this.model.width}
+        width_sizing = this._width_sizing()
       else
         width_sizing = {width_policy}
 
@@ -204,12 +207,10 @@ export abstract class LayoutDOMView extends DOMView {
       if (height_policy == "fixed") {
         if (this.model.height != null)
           height_sizing = {height_policy: "fixed", height: this.model.height}
-        else {
-          logger.warn("height must be specified with fixed sizing policy, falling back to auto policy instead")
-          height_sizing = {height_policy: "auto"}
-        }
+        else
+          throw new Error("height must be specified with fixed sizing policy, falling back to auto policy instead")
       } else if (height_policy == "auto")
-        height_sizing = {height_policy: "auto", height: this.model.height}
+        height_sizing = this._height_sizing()
       else
         height_sizing = {height_policy}
 
@@ -220,10 +221,8 @@ export abstract class LayoutDOMView extends DOMView {
         const {width, height} = this.model
         if (width != null && height != null)
           return {width_policy: "fixed", width, height_policy: "fixed", height}
-        else {
-          logger.warn("width and height must be specified with fixed sizing mode, falling back to auto policy instead")
-          return {width_policy: "auto", width, height_policy: "auto", height}
-        }
+        else
+          throw new Error("width and height must be specified with fixed sizing mode")
       } else if (sizing_mode == "stretch_both") {
         return {width_policy: "max", height_policy: "max"}
       } else {
@@ -284,8 +283,13 @@ export namespace LayoutDOM {
   export interface Attrs extends Model.Attrs {
     width: number | null
     height: number | null
-    width_policy: SizingPolicy
-    height_policy: SizingPolicy
+    min_width: number | null
+    min_height: number | null
+    max_width: number | null
+    max_height: number | null
+    margin: [number, number, number, number]
+    width_policy: SizingPolicy | "auto"
+    height_policy: SizingPolicy | "auto"
     aspect_ratio: number | "auto"
     sizing_mode: SizingMode | null
     visible: boolean
@@ -296,8 +300,13 @@ export namespace LayoutDOM {
   export interface Props extends Model.Props {
     width: p.Property<number | null>
     height: p.Property<number | null>
-    width_policy: p.Property<SizingPolicy>
-    height_policy: p.Property<SizingPolicy>
+    min_width: p.Property<number | null>
+    min_height: p.Property<number | null>
+    max_width: p.Property<number | null>
+    max_height: p.Property<number | null>
+    margin: p.Property<[number, number, number, number]>
+    width_policy: p.Property<SizingPolicy | "auto">
+    height_policy: p.Property<SizingPolicy | "auto">
     aspect_ratio: p.Property<number | "auto">
     sizing_mode: p.Property<SizingMode>
     visible: p.Property<boolean>
@@ -320,15 +329,20 @@ export abstract class LayoutDOM extends Model {
     this.prototype.type = "LayoutDOM"
 
     this.define({
-      width:         [ p.Number,     null    ],
-      height:        [ p.Number,     null    ],
-      width_policy:  [ p.Any,        "auto"  ],
-      height_policy: [ p.Any,        "auto"  ],
-      aspect_ratio:  [ p.Number,     null    ],
-      sizing_mode:   [ p.SizingMode, null    ],
-      visible:       [ p.Bool,       true    ],
-      disabled:      [ p.Bool,       false   ],
-      css_classes:   [ p.Array,      []      ],
+      width:         [ p.Number,     null         ],
+      height:        [ p.Number,     null         ],
+      min_width:     [ p.Number,     null         ],
+      min_height:    [ p.Number,     null         ],
+      max_width:     [ p.Number,     null         ],
+      max_height:    [ p.Number,     null         ],
+      margin:        [ p.Any,        [0, 0, 0, 0] ],
+      width_policy:  [ p.Any,        "auto"       ],
+      height_policy: [ p.Any,        "auto"       ],
+      aspect_ratio:  [ p.Number,     null         ],
+      sizing_mode:   [ p.SizingMode, null         ],
+      visible:       [ p.Bool,       true         ],
+      disabled:      [ p.Bool,       false        ],
+      css_classes:   [ p.Array,      []           ],
     })
   }
 }

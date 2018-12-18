@@ -133,7 +133,7 @@ export class Grid extends Layoutable {
       if (row.policy == "fixed")
         rows[y] = {align, top, height: row.height, policy: "fixed"}
       else if (row.policy == "auto")
-        rows[y] = {align, top, height, policy: "auto"}
+        rows[y] = {align, top, height, policy: "min"}
       else if (row.policy == "min")
         rows[y] = {align, top, height, policy: "min"}
       else if (row.policy == "max")
@@ -175,7 +175,7 @@ export class Grid extends Layoutable {
       if (col.policy == "fixed")
         cols[x] = {align, left, width: col.width, policy: "fixed"}
       else if (col.policy == "auto")
-        cols[x] = {align, left, width, policy: "auto"}
+        cols[x] = {align, left, width, policy: "min"}
       else if (col.policy == "min")
         cols[x] = {align, left, width, policy: "min"}
       else if (col.policy == "max")
@@ -234,16 +234,12 @@ export class Grid extends Layoutable {
     let height: number
     if (this.sizing.height_policy == "fixed")
       height = this.sizing.height
-    else if (this.sizing.height_policy == "auto" && this.sizing.height != null)
-      height = max(this.sizing.height, min_height)
     else
       height = min_height
 
     let width: number
     if (this.sizing.width_policy == "fixed")
       width = this.sizing.width
-    else if (this.sizing.width_policy == "auto" && this.sizing.width != null)
-      width = max(this.sizing.width, min_width)
     else
       width = min_width
 
@@ -353,12 +349,13 @@ export class Grid extends Layoutable {
             width = item.size_hint.width
           else if (sizing.width_policy == "max")
             width = col.width
+          /*
           else if (sizing.width_policy == "auto") {
             if (col.policy == "flex" || sizing.width == null)
               width = col.width
             else
               width = sizing.width
-          } else
+          }*/ else
             throw new Error("unreachable")
 
           let height: number
@@ -368,12 +365,12 @@ export class Grid extends Layoutable {
             height = item.size_hint.height
           else if (sizing.height_policy == "max")
             height = row.height
-          else if (sizing.height_policy == "auto") {
+          /*else if (sizing.height_policy == "auto") {
             if (row.policy == "flex" || sizing.height == null)
               height = row.height
             else
               height = sizing.height
-          } else
+          }*/ else
             throw new Error("unreachable")
 
           let left = col.left

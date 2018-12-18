@@ -28,10 +28,12 @@ log = logging.getLogger(__name__)
 # Bokeh imports
 from ..core.enums import SizingMode, SizingPolicy, Location, TrackAlign
 from ..core.has_props import abstract
-from ..core.properties import Bool, Enum, Int, Float, Instance, List, Seq, Tuple, Dict, String, Either, Struct, Override
+from ..core.properties import (Bool, Auto, Enum, Int, NonNegativeInt, Float,
+    Instance, List, Seq, Tuple, Dict, String, Either, Struct, Override)
 from ..core.validation import warning, error
 from ..core.validation.warnings import BOTH_CHILD_AND_ROOT, EMPTY_LAYOUT
-from ..core.validation.errors import FIXED_SIZING_MODE, FIXED_WIDTH_POLICY, FIXED_HEIGHT_POLICY
+from ..core.validation.errors import (FIXED_SIZING_MODE, FIXED_WIDTH_POLICY,
+    FIXED_HEIGHT_POLICY, MIN_PREFERRED_MAX_WIDTH, MIN_PREFERRED_MAX_HEIGHT)
 from ..model import Model
 from .callbacks import Callback
 
@@ -55,9 +57,7 @@ __all__ = (
 
 @abstract
 class LayoutDOM(Model):
-    ''' An abstract base class for layout components.
-
-    '''
+    """ The base class for layoutable components. """
 
     disabled = Bool(False, help="""
     Whether the widget will be disabled when rendered. If ``True``,
@@ -65,45 +65,124 @@ class LayoutDOM(Model):
     """)
 
     visible = Bool(True, help="""
-    Whether the widget will be visible and a part of a layout.
+    Whether the component will be visible and a part of a layout.
     """)
 
-    width = Int(default=None, help="""
-    An optional width for the component (in pixels).
+    width = NonNegativeInt(default=None, help="""
+    The width of the component (in pixels).
+
+    This can be either fixed or preferred width, depending on width sizing policy.
     """)
 
-    height = Int(default=None, help="""
-    An optional height for the component (in pixels).
+    height = NonNegativeInt(default=None, help="""
+    The height of the component (in pixels).
+
+    This can be either fixed or preferred height, depending on height sizing policy.
     """)
 
-    width_policy = Enum(SizingPolicy, default="auto", help="""
+    min_width = NonNegativeInt(default=None, help="""
+    Minimal width of the component (in pixels) if width is adjustable.
     """)
 
-    height_policy = Enum(SizingPolicy, default="auto", help="""
+    min_height = NonNegativeInt(default=None, help="""
+    Minimal height of the component (in pixels) if height is adjustable.
+    """)
+
+    max_width = NonNegativeInt(default=None, help="""
+    Minimal width of the component (in pixels) if width is adjustable.
+    """)
+
+    max_height = NonNegativeInt(default=None, help="""
+    Minimal height of the component (in pixels) if height is adjustable.
+    """)
+
+    margin = Tuple(Int, Int, Int, Int, default=(0, 0, 0, 0), help="""
+    Allows to create additional space around the component.
+    """).accepts(Tuple(Int, Int), lambda v_h: (v_h[0], v_h[1], v_h[0], v_h[1])) \
+        .accepts(Int, lambda m: (m, m, m, m))
+
+    width_policy = Either(Auto, Enum(SizingPolicy), default="auto", help="""
+    Describes how the component should maintain its width.
+
+    ``"auto"`` --- use component's preferred sizing policy.
+
+    ``"fixed"`` --- use exactly ``width`` pixels. Component will overflow if
+    it can't fit in the available horizontal space.
+
+    ``"fit"`` --- use component's preferred width (if set) and allow it to fit into
+    the available horizontal space within the minimum and maximum width bounds (if
+    set). Component's width neither will be aggressively minimized nor maximized.
+
+    ``"min"`` --- use as little horizontal space as possible, not less than the minimum
+    width (if set). The starting point is the preferred width (if set). The width of
+    the component may shrink or grow depending on the parent layout, aspect management
+    and other factors.
+
+    ``"max"`` --- use as much horizontal space as possible, not more than the maximum
+    width (if set). The starting point is the preferred width (if set). The width of
+    the component may shrink or grow depending on the parent layout, aspect management
+    and other factors.
+
+    """)
+
+    height_policy = Either(Auto, Enum(SizingPolicy), default="auto", help="""
+    Describes how the component should maintain its height.
+
+    ``"auto"`` --- use component's preferred sizing policy.
+
+    ``"fixed"`` --- use exactly ``height`` pixels. Component will overflow if
+    it can't fit in the available vertical space.
+
+    ``"fit"`` --- use component's preferred height (if set) and allow to fit into
+    the available vertical space withing the minimum and maximum height bounds (if
+    set). Component's height neither will be aggressively minimized nor maximized.
+
+    ``"min"`` --- use as little vertical space as possible, not less than the minimum
+    height (if set). The starting point is the preferred height (if set). The height of
+    the component may shrink or grow depending on the parent layout, aspect management
+    and other factors.
+
+    ``"max"`` --- use as much vertical space as possible, not more than the maximum
+    height (if set). The starting point is the preferred height (if set). The height of
+    the component may shrink or grow depending on the parent layout, aspect management
+    and other factors.
+
     """)
 
     aspect_ratio = Either(Enum("auto"), Float, default=None, help="""
+    Describes the proportional relationship between component's width and height.
+
+    This works if any of component's dimensions are flexible in size. If set to
+    a number, ``width / height = aspect_ratio`` relationship will be maintained.
+    Otherwise, if set to ``"auto"``, component's preferred width and height will
+    be used to determine the aspect.
 
     """)
 
     sizing_mode = Enum(SizingMode, default=None, help="""
-    How the item being displayed should size itself. Possible values are ``"fixed"``,
-    ``"scale_width"``, ``"scale_height"``, ``"scale_both"``, and ``"stretch_both"``.
+    How the component should size itself.
+
+    This is a high-level setting for maintaining width and height of the component. To
+    gain more fine grained control over sizing, use ``width_policy``, ``height_policy``
+    and ``aspect_ratio`` instead (those take precedence over ``sizing_mode``).
+
+    Possible scenarios:
 
     ``"fixed"`` elements are not responsive. They will retain their original width and height
     regardless of any subsequent browser window resize events.
 
-    ``"stretch_both"`` elements are completely responsive (independently in width and height) and
-    will resize to occupy all available space, even if this changes the aspect ratio of the layout.
+    ``"stretch_both"`` elements are completely responsive (independently in width and height)
+    and will resize to occupy all available space, even if this changes the aspect ratio of
+    the layout.
 
-    ``"scale_width"`` elements will responsively resize to stretch to the available width, *while
-    maintaining the original or provided aspect ratio*.
-
-    ``"scale_height"`` elements will responsively resize to stretch to the available height, *while
-    maintaining the original or provided aspect ratio*.
-
-    ``"scale_both"`` elements will responsively resize to for both the width and height available,
+    ``"scale_width"`` elements will responsively resize to stretch to the available width,
     *while maintaining the original or provided aspect ratio*.
+
+    ``"scale_height"`` elements will responsively resize to stretch to the available height,
+    *while maintaining the original or provided aspect ratio*.
+
+    ``"scale_both"`` elements will responsively resize to for both the width and height
+    available, *while maintaining the original or provided aspect ratio*.
 
     """)
 
@@ -131,6 +210,23 @@ class LayoutDOM(Model):
         if self.height_policy == "fixed" and self.height is None:
             return str(self)
 
+    @error(MIN_PREFERRED_MAX_WIDTH)
+    def _min_preferred_max_width(self):
+        min_width = self.min_width if self.min_width is not None else 0
+        width     = self.width     if self.width     is not None else min_width
+        max_width = self.max_width if self.max_width is not None else width
+
+        if not (min_width <= width <= max_width):
+            return str(self)
+
+    @error(MIN_PREFERRED_MAX_HEIGHT)
+    def _min_preferred_max_height(self):
+        min_height = self.min_height if self.min_height is not None else 0
+        height     = self.height     if self.height     is not None else min_height
+        max_height = self.max_height if self.max_height is not None else height
+
+        if not (min_height <= height <= max_height):
+            return str(self)
 
 class Spacer(LayoutDOM):
     ''' A container for space used to fill an empty spot in a row or column.

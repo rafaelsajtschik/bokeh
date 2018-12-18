@@ -82,8 +82,6 @@ class AbstractButton(Widget, ButtonLike):
 
     width = Override(default=300)
 
-    height_policy = Override(default="min")
-
 #-----------------------------------------------------------------------------
 # General API
 #-----------------------------------------------------------------------------

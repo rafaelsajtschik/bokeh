@@ -2,12 +2,12 @@ import * as noUiSlider from "nouislider"
 
 import * as p from "core/properties"
 import {Color} from "core/types"
-import {label, div, margin, size} from "core/dom"
+import {label, div, outer_size, unsized} from "core/dom"
 import {logger} from "core/logging"
 import {repeat} from "core/util/array"
 import {throttle} from "core/util/callback"
 import {Orientation, SliderCallbackPolicy} from "core/enums"
-import {SizeHint, Layoutable} from "core/layout"
+import {SizeHint, Layoutable, WidthSizing, HeightSizing} from "core/layout"
 
 import {Widget, WidgetView} from "./widget"
 import {CallbackLike} from "../callbacks/callback"
@@ -61,67 +61,45 @@ export abstract class AbstractSliderView extends WidgetView {
     }
   }
 
+  protected _width_sizing(): WidthSizing {
+    if (this.model.orientation == "horizontal")
+      return {width_policy: "max"}
+    else {
+      const width = unsized(this.el, () => Math.ceil(outer_size(this.el).width))
+      return {width_policy: "fixed", width}
+    }
+  }
+
+  protected _height_sizing(): HeightSizing {
+    if (this.model.orientation == "horizontal") {
+      const height = unsized(this.el, () => Math.ceil(outer_size(this.el).height))
+      return {height_policy: "fixed", height}
+    } else
+      return {height_policy: "max"}
+  }
+
   _update_layout(): void {
     const slider = this
 
     this.layout = new class extends Layoutable {
       size_hint(): SizeHint {
-        function w(el?: HTMLElement): number {
-          if (el == null)
-            return 0
-          else  {
-            const margins = margin(el)
-            return size(el).width + margins.left + margins.right // XXX: wishful thinking
-          }
-        }
-
-        function h(el?: HTMLElement): number {
-          if (el == null)
-            return 0
-          else  {
-            const margins = margin(el)
-            return size(el).height + margins.top + margins.bottom
-          }
-        }
-
         let width = 0
         if (this.sizing.width_policy == "fixed")
           width = this.sizing.width
-        else if (this.sizing.width_policy == "auto" && this.sizing.width != null)
-          width = this.sizing.width
-        else if (slider.model.orientation == "vertical") {
-          const {sliderEl, titleEl, valueEl} = slider
-          width = Math.max(w(sliderEl), w(titleEl) + w(valueEl))
-        }
+        else
+          width = slider.model.default_size // XXX
 
         let height = 0
         if (this.sizing.height_policy == "fixed")
           height = this.sizing.height
-        else if (this.sizing.height_policy == "auto" && this.sizing.height != null)
-          height = this.sizing.height
-        else if (slider.model.orientation == "horizontal") {
-          const {sliderEl, titleEl, valueEl} = slider
-          height = h(sliderEl) + Math.max(h(titleEl), h(valueEl))
-        }
+        else
+          height = slider.model.default_size // XXX
 
         return {width, height}
       }
     }
 
-    const sizing = this.box_sizing()
-    switch (this.model.orientation) {
-      case "horizontal": {
-        if (sizing.width_policy == "auto" && sizing.width == null)
-          sizing.width = this.model.default_size
-        break
-      }
-      case "vertical": {
-        if (sizing.height_policy == "auto" && sizing.height == null)
-          sizing.height = this.model.default_size
-        break
-      }
-    }
-    this.layout.sizing = sizing
+    this.layout.sizing = this.box_sizing()
   }
 
   protected abstract _calc_to(): SliderSpec

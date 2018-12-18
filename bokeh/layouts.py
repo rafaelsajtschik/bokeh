@@ -84,9 +84,12 @@ def row(*args, **kwargs):
     row_children = []
     for item in children:
         if isinstance(item, LayoutDOM):
+            if sizing_mode is not None and _has_auto_sizing(item):
+                item.sizing_mode = sizing_mode
             row_children.append(item)
         else:
             raise ValueError("""Only LayoutDOM items can be inserted into a row. Tried to insert: %s of type %s""" % (item, type(item)))
+
     return Row(children=row_children, sizing_mode=sizing_mode, **kwargs)
 
 
@@ -126,9 +129,12 @@ def column(*args, **kwargs):
     col_children = []
     for item in children:
         if isinstance(item, LayoutDOM):
+            if sizing_mode is not None and _has_auto_sizing(item):
+                item.sizing_mode = sizing_mode
             col_children.append(item)
         else:
             raise ValueError("""Only LayoutDOM items can be inserted into a column. Tried to insert: %s of type %s""" % (item, type(item)))
+
     return Column(children=col_children, sizing_mode=sizing_mode, **kwargs)
 
 
@@ -388,6 +394,9 @@ class GridSpec(object):
 #-----------------------------------------------------------------------------
 # Private API
 #-----------------------------------------------------------------------------
+
+def _has_auto_sizing(item):
+    return item.sizing_mode is None and item.width_policy == "auto" and item.height_policy == "auto"
 
 def _handle_children(*args, **kwargs):
     children = kwargs.get('children')
